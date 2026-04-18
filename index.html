@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Stock Check</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+  --navy:#1a2f5a; --blue:#2563eb; --blue2:#dbeafe;
+  --green:#16a34a; --green2:#dcfce7;
+  --red:#dc2626; --red2:#fee2e2;
+  --amber:#d97706; --amber2:#fef3c7;
+  --g50:#f8fafc; --g100:#f1f5f9; --g200:#e2e8f0;
+  --g400:#94a3b8; --g600:#475569; --g800:#1e293b;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Sora',sans-serif;background:#eef2ff;min-height:100vh;color:var(--g800)}
+.screen{display:none;min-height:100vh;flex-direction:column}
+.screen.active{display:flex}
+
+/* ── START ── */
+#s-start{background:linear-gradient(150deg,var(--navy) 0%,#1d4ed8 100%);align-items:center;justify-content:center;padding:32px 24px;text-align:center}
+.logo{font-size:64px;margin-bottom:14px;filter:drop-shadow(0 6px 16px rgba(0,0,0,.3))}
+.start-title{font-size:32px;font-weight:800;color:#fff;letter-spacing:-1px;margin-bottom:4px}
+.start-sub{font-size:13px;color:rgba(255,255,255,.55);margin-bottom:32px}
+.start-card{background:#fff;border-radius:22px;padding:26px 22px;width:100%;max-width:420px;box-shadow:0 12px 48px rgba(0,0,0,.25)}
+.field-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:5px;display:block}
+.field-inp{width:100%;border:2px solid var(--g200);border-radius:12px;padding:12px 14px;font-size:15px;font-family:'Sora',sans-serif;color:var(--g800);outline:none;transition:all .18s;background:var(--g50);margin-bottom:16px}
+.field-inp:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+
+/* Sheets URL field */
+.sheets-field{margin-bottom:16px}
+.sheets-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.sheets-badge{font-size:10px;font-weight:700;background:var(--green2);color:var(--green);padding:2px 8px;border-radius:20px}
+.sheets-inp{width:100%;border:2px solid #bbf7d0;border-radius:12px;padding:12px 14px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--g800);outline:none;transition:all .18s;background:#f0fdf4;margin-bottom:0}
+.sheets-inp:focus{border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+.sheets-inp::placeholder{color:var(--g400);font-size:11px}
+.sheets-hint{font-size:10px;color:var(--g400);margin-top:4px}
+
+.btn-primary{width:100%;background:var(--blue);color:#fff;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:700;font-family:'Sora',sans-serif;cursor:pointer;transition:all .18s;box-shadow:0 4px 16px rgba(37,99,235,.45)}
+.btn-primary:active{transform:scale(.97);box-shadow:none}
+
+/* ── TOP BAR ── */
+.top-bar{background:var(--navy);padding:15px 16px 13px;position:sticky;top:0;z-index:20}
+.top-bar-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
+.top-bar-title{font-size:15px;font-weight:700;color:#fff}
+.top-bar-sub{font-size:10px;color:rgba(255,255,255,.5);margin-top:1px}
+.phase-pill{display:inline-flex;align-items:center;gap:5px;border-radius:20px;padding:4px 11px;font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase}
+.phase-pill.p1{background:rgba(96,165,250,.2);color:#93c5fd}
+.phase-pill.p2{background:rgba(52,211,153,.2);color:#6ee7b7}
+.progress-wrap{display:flex;align-items:center;gap:9px}
+.progress-track{flex:1;height:5px;background:rgba(255,255,255,.15);border-radius:10px;overflow:hidden}
+.progress-fill{height:100%;border-radius:10px;transition:width .4s cubic-bezier(.4,0,.2,1)}
+.p1-fill{background:linear-gradient(90deg,#60a5fa,#818cf8)}
+.p2-fill{background:linear-gradient(90deg,#34d399,#10b981)}
+.progress-label{font-size:10px;font-family:'JetBrains Mono',monospace;color:rgba(255,255,255,.6);white-space:nowrap}
+
+/* ── PHASE 1 ── */
+#s-phase1{background:#eef2ff}
+.body-scroll{flex:1;overflow-y:auto;padding:14px}
+.item-card{background:#fff;border-radius:15px;box-shadow:0 2px 10px rgba(26,47,90,.09);margin-bottom:11px;overflow:hidden;animation:up .2s ease-out}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.ic-hdr{background:#eff6ff;padding:9px 13px;display:flex;align-items:center;gap:9px;border-bottom:1px solid #dbeafe}
+.ic-num{background:var(--blue);color:#fff;font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;width:24px;height:24px;border-radius:6px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ic-label{font-size:13px;font-weight:600;color:var(--navy);flex:1}
+.del-btn{background:none;border:none;color:var(--g200);font-size:17px;cursor:pointer;line-height:1;border-radius:5px;padding:2px 5px;transition:all .15s}
+.del-btn:active{color:var(--red);background:var(--red2)}
+.ic-body{padding:13px}
+.inp-lbl{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.dot{width:5px;height:5px;border-radius:50%;display:inline-block;flex-shrink:0}
+.dn{background:#8b5cf6}.db{background:#f59e0b}.dq{background:var(--blue)}
+.card-inp{width:100%;border:2px solid var(--g200);border-radius:9px;padding:9px 11px;font-size:14px;font-family:'Sora',sans-serif;color:var(--g800);outline:none;transition:all .18s;background:var(--g50);margin-bottom:11px}
+.card-inp:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.qty-row{display:flex;gap:7px;align-items:center}
+.qty-btn{width:42px;height:42px;border-radius:10px;border:2px solid var(--g200);background:#fff;font-size:19px;font-weight:600;color:var(--g600);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .14s}
+.qty-btn:active{background:var(--blue2);border-color:var(--blue);color:var(--blue);transform:scale(.91)}
+.qty-inp{flex:1;border:2px solid var(--g200);border-radius:9px;padding:9px;font-size:20px;font-family:'JetBrains Mono',monospace;font-weight:500;text-align:center;color:var(--navy);outline:none;transition:all .18s;background:var(--g50)}
+.qty-inp:focus{border-color:var(--blue);background:#fff}
+.add-btn{width:100%;background:#fff;border:2px dashed #93c5fd;border-radius:13px;padding:14px;font-size:13px;font-weight:600;color:var(--blue);cursor:pointer;font-family:'Sora',sans-serif;display:flex;align-items:center;justify-content:center;gap:7px;transition:all .18s;margin-bottom:14px}
+.add-btn:active{background:var(--blue2)}
+
+/* ── FOOTER ── */
+.foot{padding:13px 15px;background:#fff;border-top:1px solid var(--g200);display:flex;gap:9px}
+.btn-ghost{background:var(--g100);border:none;border-radius:11px;padding:14px 15px;font-size:12px;font-weight:600;color:var(--g600);cursor:pointer;font-family:'Sora',sans-serif;transition:all .18s}
+.btn-ghost:active{background:var(--g200)}
+.btn-next{flex:1;border:none;border-radius:11px;padding:14px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:'Sora',sans-serif;transition:all .18s;display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-next.blue{background:var(--blue);box-shadow:0 4px 14px rgba(37,99,235,.4)}
+.btn-next.green{background:var(--green);box-shadow:0 4px 14px rgba(22,163,74,.4)}
+.btn-next:active{transform:scale(.97);box-shadow:none}
+.btn-next:disabled{background:var(--g200);color:var(--g400);box-shadow:none;cursor:not-allowed}
+
+/* ── PHASE 2 ── */
+#s-phase2{background:#f0fdf4}
+.p2-banner{background:linear-gradient(135deg,#064e3b,#065f46);padding:18px 16px 16px}
+.p2-badge{display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,.15);color:#6ee7b7;font-size:9px;font-weight:700;letter-spacing:.08em;padding:3px 10px;border-radius:20px;margin-bottom:8px;text-transform:uppercase}
+.p2-title{font-size:20px;font-weight:800;color:#fff;margin-bottom:3px;letter-spacing:-.3px}
+.p2-sub{font-size:12px;color:rgba(255,255,255,.6);margin-bottom:12px}
+.comp-card{background:#fff;border-radius:13px;box-shadow:0 2px 8px rgba(6,78,59,.09);margin-bottom:9px;overflow:hidden;display:flex;align-items:center;border-left:4px solid var(--g200);transition:border-color .2s;animation:up .2s ease-out}
+.comp-card.checked{border-color:var(--green)}
+.cc-left{padding:13px;flex:1;min-width:0}
+.cc-name{font-size:14px;font-weight:700;color:var(--g800);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cc-brand{font-size:11px;color:var(--g400);margin-top:1px}
+.cc-phys{display:inline-flex;align-items:center;gap:3px;background:var(--blue2);color:var(--blue);font-size:10px;font-weight:700;font-family:'JetBrains Mono',monospace;padding:2px 8px;border-radius:5px;margin-top:5px}
+.cc-right{padding:11px 13px 11px 0;flex-shrink:0}
+.comp-inp{width:84px;border:2px solid var(--g200);border-radius:9px;padding:9px 6px;font-size:20px;font-family:'JetBrains Mono',monospace;font-weight:500;text-align:center;color:var(--navy);outline:none;transition:all .18s;background:var(--g50)}
+.comp-inp:focus{border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(22,163,74,.12)}
+.comp-inp.done{border-color:var(--green);background:var(--green2);color:var(--green)}
+
+/* ── SUMMARY ── */
+#s-summary{background:#eef2ff}
+.sum-hero{padding:28px 22px 24px;text-align:center}
+.sum-hero.saving{background:linear-gradient(135deg,#1e40af,var(--blue))}
+.sum-hero.saved{background:linear-gradient(135deg,var(--green),#059669)}
+.sum-hero.error{background:linear-gradient(135deg,#991b1b,var(--red))}
+.sum-icon{font-size:50px;margin-bottom:10px}
+.sum-title{font-size:24px;font-weight:800;color:#fff;margin-bottom:4px;letter-spacing:-.5px}
+.sum-meta{font-size:12px;color:rgba(255,255,255,.65)}
+.saving-bar{background:rgba(255,255,255,.2);border-radius:10px;height:6px;margin-top:14px;overflow:hidden}
+.saving-fill{height:100%;background:#fff;border-radius:10px;animation:saving 1.5s ease-in-out infinite}
+@keyframes saving{0%{width:0%}50%{width:80%}100%{width:100%}}
+
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:16px}
+.stat-card{background:#fff;border-radius:13px;padding:14px;text-align:center;box-shadow:0 2px 8px rgba(26,47,90,.08);border-top:3px solid transparent}
+.stat-card.total{border-color:var(--blue)}.stat-card.match{border-color:var(--green)}
+.stat-card.short{border-color:var(--red)}.stat-card.over{border-color:var(--amber)}
+.stat-n{font-size:36px;font-weight:800;font-family:'JetBrains Mono',monospace}
+.total .stat-n{color:var(--blue)}.match .stat-n{color:var(--green)}
+.short .stat-n{color:var(--red)}.over  .stat-n{color:var(--amber)}
+.stat-lbl{font-size:10px;color:var(--g400);font-weight:600;text-transform:uppercase;letter-spacing:.05em;margin-top:2px}
+
+/* Sheets status banner */
+.sheets-status{border-radius:12px;padding:12px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600}
+.sheets-status.ok{background:var(--green2);color:var(--green)}
+.sheets-status.err{background:var(--red2);color:var(--red)}
+.sheets-status.pending{background:var(--blue2);color:var(--blue)}
+.sheets-status-icon{font-size:18px;flex-shrink:0}
+
+.res-section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--g400);margin-bottom:7px}
+.res-item{background:#fff;border-radius:11px;padding:10px 12px;margin-bottom:6px;display:flex;align-items:center;gap:9px;box-shadow:0 1px 5px rgba(26,47,90,.07)}
+.res-badge{font-size:9px;font-weight:700;padding:3px 8px;border-radius:20px;flex-shrink:0;font-family:'JetBrains Mono',monospace}
+.b-match{background:var(--green2);color:var(--green)}.b-over{background:var(--amber2);color:var(--amber)}
+.b-short{background:var(--red2);color:var(--red)}.b-na{background:var(--g100);color:var(--g400)}
+.res-name{font-size:13px;font-weight:600;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.res-nums{font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--g400);flex-shrink:0;text-align:right;line-height:1.6}
+
+.sum-foot{padding:13px 15px;background:#fff;border-top:1px solid var(--g200);display:flex;gap:9px}
+.btn-export{flex:1;background:var(--navy);border:none;border-radius:11px;padding:15px;font-size:14px;font-weight:700;color:#fff;cursor:pointer;font-family:'Sora',sans-serif;transition:all .18s;box-shadow:0 4px 14px rgba(26,47,90,.35);display:flex;align-items:center;justify-content:center;gap:7px}
+.btn-export:active{transform:scale(.97)}
+.btn-new{background:var(--g100);border:none;border-radius:11px;padding:15px 16px;font-size:12px;font-weight:600;color:var(--g600);cursor:pointer;font-family:'Sora',sans-serif}
+
+/* ── OVERLAY ── */
+.overlay{position:fixed;inset:0;background:rgba(10,20,50,.55);display:flex;align-items:flex-end;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .22s}
+.overlay.show{opacity:1;pointer-events:all}
+.confirm-sheet{background:#fff;border-radius:20px 20px 0 0;padding:24px 20px 32px;width:100%;max-width:460px;transform:translateY(40px);transition:transform .26s cubic-bezier(.4,0,.2,1)}
+.overlay.show .confirm-sheet{transform:translateY(0)}
+.ct{font-size:17px;font-weight:800;color:var(--navy);margin-bottom:7px}
+.cb{font-size:13px;color:var(--g600);line-height:1.65;margin-bottom:20px}
+.ca{display:flex;gap:8px}
+.cc{flex:1;background:var(--g100);border:none;border-radius:11px;padding:13px;font-size:13px;font-weight:600;color:var(--g600);cursor:pointer;font-family:'Sora',sans-serif}
+.cg{flex:2;background:var(--green);border:none;border-radius:11px;padding:13px;font-size:13px;font-weight:700;color:#fff;cursor:pointer;font-family:'Sora',sans-serif}
+
+/* ── TOAST ── */
+.toast{position:fixed;bottom:85px;left:50%;transform:translateX(-50%) translateY(12px);background:var(--g800);color:#fff;padding:10px 18px;border-radius:11px;font-size:12px;font-weight:600;opacity:0;transition:all .25s;pointer-events:none;z-index:999;white-space:nowrap}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.toast.ok{background:var(--green)}.toast.err{background:var(--red)}
+
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+input[type=number]{-moz-appearance:textfield}
+</style>
+</head>
+<body>
+
+<!-- ══════ START ══════ -->
+<div id="s-start" class="screen active">
+  <div class="logo">📦</div>
+  <div class="start-title">Stock Check</div>
+  <div class="start-sub">Phase 1: Count · Phase 2: Compare · Auto-saves to Google Sheets</div>
+  <div class="start-card">
+    <label class="field-lbl">Your Name</label>
+    <input class="field-inp" id="checker" placeholder="e.g. Aniket" type="text" autocomplete="name">
+
+    <label class="field-lbl">Location / Area</label>
+    <input class="field-inp" id="location" placeholder="e.g. Warehouse A" type="text">
+
+    <div class="sheets-field">
+      <div class="sheets-label-row">
+        <label class="field-lbl" style="margin-bottom:0">Google Sheets URL</label>
+        <span class="sheets-badge">Auto-save</span>
+      </div>
+      <input class="sheets-inp" id="sheets-url" type="url"
+        placeholder="Paste your Web App URL here…">
+      <div class="sheets-hint">Paste the Apps Script deployment URL to save directly to your sheet</div>
+    </div>
+
+    <button class="btn-primary" onclick="startCheck()">Start Physical Count →</button>
+  </div>
+</div>
+
+<!-- ══════ PHASE 1 ══════ -->
+<div id="s-phase1" class="screen">
+  <div class="top-bar">
+    <div class="top-bar-row">
+      <div>
+        <div class="top-bar-title">Phase 1 — Physical Count</div>
+        <div class="top-bar-sub">Walk the floor, count each item</div>
+      </div>
+      <div class="phase-pill p1">📦 Counting</div>
+    </div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill p1-fill" id="p1-bar" style="width:0%"></div></div>
+      <div class="progress-label" id="p1-lbl">0 items</div>
+    </div>
+  </div>
+  <div class="body-scroll">
+    <div id="p1-list"></div>
+    <button class="add-btn" onclick="addItem()">＋&nbsp; Add Item</button>
+  </div>
+  <div class="foot">
+    <button class="btn-ghost" onclick="goTo('s-start')">← Back</button>
+    <button class="btn-next blue" onclick="finishPhase1()">✓ &nbsp;Physical Count Done →</button>
+  </div>
+</div>
+
+<!-- ══════ PHASE 2 ══════ -->
+<div id="s-phase2" class="screen">
+  <div class="p2-banner">
+    <div class="p2-badge">✅ Phase 2 — Final Step</div>
+    <div class="p2-title">Enter Computer Stock</div>
+    <div class="p2-sub">Check the system and fill in each item below</div>
+    <div class="progress-wrap">
+      <div class="progress-track"><div class="progress-fill p2-fill" id="p2-bar" style="width:0%"></div></div>
+      <div class="progress-label" id="p2-lbl">0 / 0 done</div>
+    </div>
+  </div>
+  <div class="body-scroll" id="p2-body"></div>
+  <div class="foot">
+    <button class="btn-ghost" onclick="goTo('s-phase1')">← Back</button>
+    <button class="btn-next green" id="btn-finalise" onclick="finalise()">✅ &nbsp;Save & Finish →</button>
+  </div>
+</div>
+
+<!-- ══════ SUMMARY ══════ -->
+<div id="s-summary" class="screen">
+  <div class="sum-hero saving" id="sum-hero">
+    <div class="sum-icon" id="sum-icon">⏳</div>
+    <div class="sum-title" id="sum-title">Saving to Google Sheets…</div>
+    <div class="sum-meta" id="sum-meta"></div>
+    <div class="saving-bar" id="saving-bar"><div class="saving-fill"></div></div>
+  </div>
+  <div class="body-scroll" id="sum-body" style="padding:14px"></div>
+  <div class="sum-foot">
+    <button class="btn-new" onclick="newCheck()">🔄 New Check</button>
+    <button class="btn-export" onclick="exportExcel()">⬇️ Export Excel</button>
+  </div>
+</div>
+
+<!-- Confirm overlay -->
+<div class="overlay" id="overlay">
+  <div class="confirm-sheet">
+    <div class="ct">📋 Physical Count Done?</div>
+    <div class="cb" id="confirm-body"></div>
+    <div class="ca">
+      <button class="cc" onclick="closeOverlay()">← Keep Editing</button>
+      <button class="cg" onclick="confirmPhase2()">Yes, Enter Computer Stock →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let state = { checker:'', location:'', sheetsUrl:'', date:new Date(), items:[] };
+let idCtr = 0;
+const STORAGE_KEY = 'stockcheck_sheets_url';
+
+// Restore saved URL
+window.addEventListener('load', () => {
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved) document.getElementById('sheets-url').value = saved;
+});
+
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ── START ──
+function startCheck() {
+  const name = document.getElementById('checker').value.trim();
+  if (!name) { showToast('Please enter your name','err'); return; }
+  const url = document.getElementById('sheets-url').value.trim();
+  if (url) localStorage.setItem(STORAGE_KEY, url); // remember it
+  state = { checker:name, location:document.getElementById('location').value.trim(), sheetsUrl:url, date:new Date(), items:[] };
+  idCtr = 0;
+  renderP1();
+  goTo('s-phase1');
+  setTimeout(addItem, 180);
+}
+
+// ── PHASE 1 ──
+function addItem() {
+  const id = ++idCtr;
+  state.items.push({ id, name:'', brand:'', qty:0, compStock:null });
+  renderP1();
+  setTimeout(() => { const el=document.getElementById('n-'+id); if(el) el.focus(); }, 55);
+}
+
+function removeItem(id) {
+  if (state.items.length===1) { showToast('Need at least 1 item','err'); return; }
+  state.items = state.items.filter(i => i.id!==id);
+  renderP1();
+}
+
+function adjQty(id, d) {
+  const item = state.items.find(i => i.id===id);
+  if (!item) return;
+  item.qty = Math.max(0,(item.qty||0)+d);
+  const el = document.getElementById('q-'+id);
+  if (el) el.value = item.qty;
+}
+
+function syncP1() {
+  state.items.forEach(item => {
+    const n=document.getElementById('n-'+item.id);
+    const b=document.getElementById('b-'+item.id);
+    const q=document.getElementById('q-'+item.id);
+    if(n) item.name=n.value.trim();
+    if(b) item.brand=b.value.trim();
+    if(q) item.qty=parseInt(q.value)||0;
+  });
+}
+
+function renderP1() {
+  const n = state.items.length;
+  document.getElementById('p1-bar').style.width=Math.min(100,n*5)+'%';
+  document.getElementById('p1-lbl').textContent=n+(n===1?' item':' items');
+  document.getElementById('p1-list').innerHTML = state.items.map((item,idx) => `
+    <div class="item-card">
+      <div class="ic-hdr">
+        <div class="ic-num">${idx+1}</div>
+        <div class="ic-label">Item ${idx+1}</div>
+        <button class="del-btn" onclick="removeItem(${item.id})">✕</button>
+      </div>
+      <div class="ic-body">
+        <div class="inp-lbl"><span class="dot dn"></span>Item Name</div>
+        <input class="card-inp" id="n-${item.id}" type="text" placeholder="e.g. SC16UU, 6005…"
+          value="${esc(item.name)}"
+          oninput="state.items.find(i=>i.id===${item.id}).name=this.value"
+          onkeydown="if(event.key==='Enter')document.getElementById('b-${item.id}').focus()">
+        <div class="inp-lbl"><span class="dot db"></span>Brand</div>
+        <input class="card-inp" id="b-${item.id}" type="text" placeholder="e.g. SKF, FAG, CIU…"
+          value="${esc(item.brand)}"
+          oninput="state.items.find(i=>i.id===${item.id}).brand=this.value"
+          onkeydown="if(event.key==='Enter')document.getElementById('q-${item.id}').focus()">
+        <div class="inp-lbl"><span class="dot dq"></span>Physical Quantity</div>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="adjQty(${item.id},-1)">−</button>
+          <input class="qty-inp" id="q-${item.id}" type="number" min="0" value="${item.qty||0}"
+            oninput="state.items.find(i=>i.id===${item.id}).qty=parseInt(this.value)||0"
+            onkeydown="if(event.key==='Enter')addItem()">
+          <button class="qty-btn" onclick="adjQty(${item.id},1)">＋</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function finishPhase1() {
+  syncP1();
+  const valid = state.items.filter(i => i.name);
+  if (!valid.length) { showToast('Add at least one item','err'); return; }
+  state.items = valid;
+  const totalQty = state.items.reduce((s,i)=>s+(i.qty||0),0);
+  document.getElementById('confirm-body').innerHTML =
+    `You've counted <strong>${state.items.length} item${state.items.length>1?'s':''}</strong> with <strong>${totalQty} total units</strong>.<br><br>
+     Next you'll enter the <strong>Computer Stock</strong> for each item. Make sure your full physical count is complete.`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeOverlay() { document.getElementById('overlay').classList.remove('show'); }
+
+function confirmPhase2() {
+  closeOverlay();
+  buildP2();
+  goTo('s-phase2');
+  setTimeout(() => { const f=document.querySelector('.comp-inp'); if(f) f.focus(); }, 100);
+}
+
+// ── PHASE 2 ──
+function buildP2() {
+  document.getElementById('p2-body').innerHTML = state.items.map((item,idx) => `
+    <div class="comp-card" id="cc-${item.id}">
+      <div class="cc-left">
+        <div class="cc-name">${esc(item.name)}</div>
+        <div class="cc-brand">${esc(item.brand)||'—'}</div>
+        <div class="cc-phys">📦 Counted: ${item.qty}</div>
+      </div>
+      <div class="cc-right">
+        <input class="comp-inp" id="ci-${item.id}" type="number" min="0" placeholder="—"
+          oninput="onCompInput(${item.id},this)"
+          onkeydown="compEnter(event,${idx})">
+      </div>
+    </div>
+  `).join('');
+  updateP2Progress();
+}
+
+function onCompInput(id, el) {
+  const item = state.items.find(i => i.id===id);
+  if (!item) return;
+  item.compStock = el.value==='' ? null : parseInt(el.value);
+  el.classList.toggle('done', el.value!=='');
+  const card = document.getElementById('cc-'+id);
+  if (card) card.classList.toggle('checked', el.value!=='');
+  updateP2Progress();
+}
+
+function compEnter(event, idx) {
+  if (event.key==='Enter') {
+    const inputs = document.querySelectorAll('.comp-inp');
+    if (inputs[idx+1]) inputs[idx+1].focus();
+  }
+}
+
+function updateP2Progress() {
+  const done=state.items.filter(i=>i.compStock!==null).length;
+  const total=state.items.length;
+  document.getElementById('p2-bar').style.width=(total?done/total*100:0)+'%';
+  document.getElementById('p2-lbl').textContent=`${done} / ${total} done`;
+}
+
+// ── FINALISE & SAVE ──
+async function finalise() {
+  // Sync comp inputs
+  state.items.forEach(item => {
+    const el = document.getElementById('ci-'+item.id);
+    if (el && el.value!=='') item.compStock = parseInt(el.value);
+  });
+
+  const btn = document.getElementById('btn-finalise');
+  btn.disabled = true;
+  btn.textContent = '⏳ Saving…';
+
+  goTo('s-summary');
+  renderSummary('saving');
+
+  // Try saving to Google Sheets
+  if (state.sheetsUrl) {
+    try {
+      const response = await fetch(state.sheetsUrl, {
+        method: 'POST',
+        body: JSON.stringify({ checker: state.checker, items: state.items }),
+        headers: { 'Content-Type': 'text/plain' } // avoid CORS preflight
+      });
+      const result = await response.json();
+      if (result.success) {
+        renderSummary('saved', `Saved ${result.saved} rows to Google Sheets ✅`);
+      } else {
+        renderSummary('error', 'Sheet error: ' + (result.error||'Unknown'));
+      }
+    } catch(err) {
+      renderSummary('error', 'Could not reach Google Sheets. Data shown below.');
+    }
+  } else {
+    renderSummary('saved', 'No Sheets URL set — export Excel to save your data');
+  }
+
+  btn.disabled = false;
+  btn.textContent = '✅ Save & Finish →';
+}
+
+function getStatus(item) {
+  if (item.compStock===null) return 'pending';
+  if (item.qty===item.compStock) return 'match';
+  return item.qty>item.compStock ? 'over' : 'short';
+}
+
+function renderSummary(phase, sheetsMsg) {
+  const hero  = document.getElementById('sum-hero');
+  const icon  = document.getElementById('sum-icon');
+  const title = document.getElementById('sum-title');
+  const meta  = document.getElementById('sum-meta');
+  const bar   = document.getElementById('saving-bar');
+
+  if (phase==='saving') {
+    hero.className='sum-hero saving'; icon.textContent='⏳';
+    title.textContent='Saving to Google Sheets…';
+    meta.textContent=`${state.checker} · ${fmtDate(state.date)}`;
+    bar.style.display='block'; return;
+  }
+
+  bar.style.display='none';
+  if (phase==='saved') {
+    hero.className='sum-hero saved'; icon.textContent='✅';
+    title.textContent='Check Complete!';
+  } else {
+    hero.className='sum-hero error'; icon.textContent='⚠️';
+    title.textContent='Saved Locally';
+  }
+  meta.textContent=`${state.checker}${state.location?' · '+state.location:''} · ${fmtDate(state.date)}`;
+
+  const counts={match:0,over:0,short:0,pending:0};
+  state.items.forEach(i=>counts[getStatus(i)]++);
+
+  const stLabel={match:'✔ MATCH',over:'▲ OVER',short:'▼ SHORT',pending:'— N/A'};
+  const stCls={match:'b-match',over:'b-over',short:'b-short',pending:'b-na'};
+
+  document.getElementById('sum-body').innerHTML = `
+    ${sheetsMsg ? `<div class="sheets-status ${phase==='saved'?'ok':'err'}">
+      <span class="sheets-status-icon">${phase==='saved'?'🟢':'🔴'}</span>
+      <span>${sheetsMsg}</span>
+    </div>` : ''}
+    <div class="stats-grid">
+      <div class="stat-card total"><div class="stat-n">${state.items.length}</div><div class="stat-lbl">Total Items</div></div>
+      <div class="stat-card match"><div class="stat-n">${counts.match}</div><div class="stat-lbl">Matched</div></div>
+      <div class="stat-card short"><div class="stat-n">${counts.short}</div><div class="stat-lbl">Short</div></div>
+      <div class="stat-card over"><div class="stat-n">${counts.over}</div><div class="stat-lbl">Over</div></div>
+    </div>
+    <div class="res-section-title">All Items</div>
+    ${state.items.map(item=>{
+      const st=getStatus(item);
+      return `<div class="res-item">
+        <span class="res-badge ${stCls[st]}">${stLabel[st]}</span>
+        <span class="res-name">${esc(item.name)}</span>
+        <span class="res-nums">${item.qty}<br><span style="color:var(--g200)">vs</span> ${item.compStock??'—'}</span>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+function exportExcel() {
+  const wb=XLSX.utils.book_new();
+  const today=fmtDate(state.date);
+  const rows=[
+    ['STOCK CHECK REPORT'],[''],
+    ['Checked by:',state.checker,'','Location:',state.location||'—'],
+    ['Date:',today,'','Total Items:',state.items.length],[''],
+    ['Timestamp','Checked By','Item Name','Brand','Physical Qty','Computer Stock','Difference','Status','Notes'],
+  ];
+  const ts = new Date().toLocaleString('en-GB');
+  state.items.forEach(item=>{
+    const st=getStatus(item);
+    const lbl={match:'✔ MATCH',over:'▲ OVER',short:'▼ SHORT',pending:'— N/A'}[st];
+    const diff=item.compStock!==null?item.qty-item.compStock:'';
+    rows.push([ts,state.checker,item.name,item.brand||'',item.qty,item.compStock??'',diff,lbl,'']);
+  });
+  const ws=XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols']=[{wch:18},{wch:14},{wch:20},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10},{wch:16}];
+  XLSX.utils.book_append_sheet(wb,ws,'Stock Check');
+  XLSX.writeFile(wb,`StockCheck_${state.checker.replace(/\s+/g,'_')}_${today.replace(/\s/g,'')}.xlsx`);
+  showToast('✅ Excel downloaded!','ok');
+}
+
+function newCheck() {
+  state={checker:'',location:'',sheetsUrl:state.sheetsUrl,date:new Date(),items:[]};
+  idCtr=0;
+  document.getElementById('checker').value='';
+  document.getElementById('location').value='';
+  goTo('s-start');
+}
+
+function fmtDate(d){return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'})}
+function esc(s){return(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function showToast(msg,type){
+  const t=document.getElementById('toast');
+  t.textContent=msg;t.className='toast '+(type||'')+' show';
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+</script>
+</body>
+</html>
