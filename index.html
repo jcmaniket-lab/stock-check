@@ -30,18 +30,6 @@ body{font-family:'Sora',sans-serif;background:#eef2ff;min-height:100vh;color:var
 .field-inp{width:100%;border:2px solid var(--g200);border-radius:12px;padding:12px 14px;font-size:15px;font-family:'Sora',sans-serif;color:var(--g800);outline:none;transition:all .18s;background:var(--g50);margin-bottom:16px}
 .field-inp:focus{border-color:var(--blue);background:#fff;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
 
-/* Sheets URL field */
-.sheets-field{margin-bottom:16px}
-.sheets-label-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
-.sheets-badge{font-size:10px;font-weight:700;background:var(--green2);color:var(--green);padding:2px 8px;border-radius:20px}
-.sheets-inp{width:100%;border:2px solid #bbf7d0;border-radius:12px;padding:12px 14px;font-size:12px;font-family:'JetBrains Mono',monospace;color:var(--g800);outline:none;transition:all .18s;background:#f0fdf4;margin-bottom:0}
-.sheets-inp:focus{border-color:var(--green);background:#fff;box-shadow:0 0 0 3px rgba(22,163,74,.12)}
-.sheets-inp::placeholder{color:var(--g400);font-size:11px}
-.sheets-hint{font-size:10px;color:var(--g400);margin-top:4px}
-
-.btn-primary{width:100%;background:var(--blue);color:#fff;border:none;border-radius:14px;padding:16px;font-size:15px;font-weight:700;font-family:'Sora',sans-serif;cursor:pointer;transition:all .18s;box-shadow:0 4px 16px rgba(37,99,235,.45)}
-.btn-primary:active{transform:scale(.97);box-shadow:none}
-
 /* ── TOP BAR ── */
 .top-bar{background:var(--navy);padding:15px 16px 13px;position:sticky;top:0;z-index:20}
 .top-bar-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:11px}
@@ -275,6 +263,7 @@ input[type=number]{-moz-appearance:textfield}
 let state = { checker:'', location:'', sheetsUrl:'', date:new Date(), items:[] };
 let idCtr = 0;
 const STORAGE_KEY = 'stockcheck_sheets_url';
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwI_4jqoD60G0wQ1U-s9EuKQWbxEz6icZL-5YED1XNX2i8sARtClPhLNPt9e7Z3y--e/exec';
 
 // Restore saved URL
 window.addEventListener('load', () => {
@@ -294,7 +283,7 @@ function startCheck() {
   if (!name) { showToast('Please enter your name','err'); return; }
   const url = document.getElementById('sheets-url').value.trim();
   if (url) localStorage.setItem(STORAGE_KEY, url); // remember it
-  state = { checker:name, location:document.getElementById('location').value.trim(), sheetsUrl:url, date:new Date(), items:[] };
+  state = { checker:name, location:document.getElementById('location').value.trim(), sheetsUrl:SHEETS_URL, date:new Date(), items:[] };
   idCtr = 0;
   renderP1();
   goTo('s-phase1');
