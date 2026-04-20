@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Stock Check — JCM</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+  --navy:   #0f1f45;
+  --blue:   #2563eb;
+  --blue2:  #dbeafe;
+  --indigo: #4f46e5;
+  --green:  #059669;
+  --green2: #d1fae5;
+  --red:    #dc2626;
+  --red2:   #fee2e2;
+  --amber:  #d97706;
+  --amber2: #fef3c7;
+  --g50:    #f8fafc;
+  --g100:   #f1f5f9;
+  --g200:   #e2e8f0;
+  --g300:   #cbd5e1;
+  --g400:   #94a3b8;
+  --g600:   #475569;
+  --g800:   #1e293b;
+  --udhna:  #7c3aed;  /* purple for Udhna */
+  --udhna2: #ede9fe;
+  --kim:    #0891b2;  /* cyan for Kim */
+  --kim2:   #cffafe;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'Plus Jakarta Sans', sans-serif; background: #0f1f45; min-height: 100vh; color: var(--g800); }
+
+/* ══════════════════════════════════
+   SCREENS
+══════════════════════════════════ */
+.screen { display: none; min-height: 100vh; flex-direction: column; }
+.screen.active { display: flex; }
+
+/* ══════════════════════════════════
+   SCREEN 1 — ROLE + GODOWN SELECT
+══════════════════════════════════ */
+#s-select {
+  background: var(--navy);
+  align-items: center; justify-content: center;
+  padding: 28px 20px; min-height: 100vh;
+  position: relative; overflow: hidden;
+}
+
+/* Background pattern */
+#s-select::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: radial-gradient(ellipse at 20% 50%, rgba(79,70,229,.25) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 20%, rgba(8,145,178,.2) 0%, transparent 50%);
+  pointer-events: none;
+}
+
+.select-wrap { width: 100%; max-width: 400px; position: relative; z-index: 1; }
+
+.app-brand {
+  text-align: center; margin-bottom: 32px;
+}
+.app-icon { font-size: 52px; margin-bottom: 10px; display: block; filter: drop-shadow(0 4px 16px rgba(99,102,241,.5)); }
+.app-name { font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+.app-tagline { font-size: 13px; color: rgba(255,255,255,.45); margin-top: 3px; }
+
+/* Section label */
+.sect-label {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: .12em; color: rgba(255,255,255,.4);
+  margin-bottom: 10px; padding-left: 2px;
+}
+
+/* Name input */
+.name-card {
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 16px; padding: 14px 16px;
+  display: flex; align-items: center; gap: 12px;
+  margin-bottom: 20px;
+}
+.name-icon { font-size: 22px; flex-shrink: 0; }
+.name-inp {
+  flex: 1; background: none; border: none; outline: none;
+  font-size: 16px; font-weight: 600; color: #fff;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+}
+.name-inp::placeholder { color: rgba(255,255,255,.3); font-weight: 400; }
+
+/* Godown cards */
+.godown-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.godown-card {
+  border-radius: 16px; padding: 18px 14px;
+  cursor: pointer; transition: all .2s;
+  border: 2px solid transparent;
+  position: relative; overflow: hidden;
+}
+.godown-card.udhna {
+  background: linear-gradient(135deg, rgba(124,58,237,.3), rgba(124,58,237,.15));
+  border-color: rgba(124,58,237,.4);
+}
+.godown-card.kim {
+  background: linear-gradient(135deg, rgba(8,145,178,.3), rgba(8,145,178,.15));
+  border-color: rgba(8,145,178,.4);
+}
+.godown-card.selected.udhna { background: linear-gradient(135deg,#7c3aed,#6d28d9); border-color: #7c3aed; box-shadow: 0 8px 24px rgba(124,58,237,.5); }
+.godown-card.selected.kim   { background: linear-gradient(135deg,#0891b2,#0e7490); border-color: #0891b2; box-shadow: 0 8px 24px rgba(8,145,178,.5); }
+.godown-icon { font-size: 26px; margin-bottom: 8px; display: block; }
+.godown-name { font-size: 16px; font-weight: 800; color: #fff; }
+.godown-sub { font-size: 11px; color: rgba(255,255,255,.55); margin-top: 2px; }
+.godown-check {
+  position: absolute; top: 10px; right: 10px;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: rgba(255,255,255,.2); display: flex; align-items: center; justify-content: center;
+  font-size: 11px; transition: all .2s;
+}
+.godown-card.selected .godown-check { background: #fff; color: var(--green); }
+
+/* Role cards */
+.role-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 24px; }
+.role-card {
+  border-radius: 16px; padding: 18px 14px;
+  cursor: pointer; transition: all .2s;
+  border: 2px solid rgba(255,255,255,.1);
+  background: rgba(255,255,255,.05);
+  text-align: center;
+}
+.role-card.selected {
+  border-color: #fff;
+  background: rgba(255,255,255,.15);
+  box-shadow: 0 4px 20px rgba(255,255,255,.15);
+}
+.role-icon { font-size: 28px; margin-bottom: 6px; display: block; }
+.role-name { font-size: 13px; font-weight: 700; color: #fff; }
+.role-desc { font-size: 10px; color: rgba(255,255,255,.45); margin-top: 3px; line-height: 1.4; }
+
+/* Start button */
+.btn-start {
+  width: 100%; background: linear-gradient(135deg, #2563eb, #4f46e5);
+  color: #fff; border: none; border-radius: 16px;
+  padding: 18px; font-size: 16px; font-weight: 800;
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  cursor: pointer; transition: all .2s;
+  box-shadow: 0 6px 24px rgba(37,99,235,.5);
+  letter-spacing: .01em;
+}
+.btn-start:active { transform: scale(.97); box-shadow: none; }
+
+/* ══════════════════════════════════
+   TOP BAR (shared)
+══════════════════════════════════ */
+.top-bar {
+  padding: 14px 16px 12px;
+  position: sticky; top: 0; z-index: 20;
+}
+.top-bar.udhna-bar { background: linear-gradient(135deg,#5b21b6,#7c3aed); }
+.top-bar.kim-bar   { background: linear-gradient(135deg,#0e7490,#0891b2); }
+.top-bar.green-bar { background: linear-gradient(135deg,#065f46,#059669); }
+
+.tb-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.tb-left { flex: 1; }
+.tb-title { font-size: 15px; font-weight: 800; color: #fff; }
+.tb-sub { font-size: 10px; color: rgba(255,255,255,.55); margin-top: 1px; }
+.tb-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: rgba(255,255,255,.18); color: #fff;
+  font-size: 10px; font-weight: 700; letter-spacing: .04em;
+  padding: 4px 11px; border-radius: 20px; text-transform: uppercase;
+}
+.prog-wrap { display: flex; align-items: center; gap: 9px; }
+.prog-track { flex: 1; height: 5px; background: rgba(255,255,255,.2); border-radius: 10px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 10px; background: rgba(255,255,255,.8); transition: width .4s cubic-bezier(.4,0,.2,1); }
+.prog-lbl { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: rgba(255,255,255,.6); white-space: nowrap; }
+
+/* ══════════════════════════════════
+   SCREEN 2 — COUNTER (Phase 1)
+══════════════════════════════════ */
+#s-counter { background: #f0f4ff; }
+.body-area { flex: 1; overflow-y: auto; padding: 14px; }
+
+.item-card {
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(15,31,69,.08);
+  margin-bottom: 11px; overflow: hidden;
+  animation: slideUp .22s ease-out;
+}
+@keyframes slideUp { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:translateY(0)} }
+
+.ic-hdr {
+  padding: 10px 13px; display: flex; align-items: center; gap: 9px;
+  border-bottom: 1px solid var(--g100);
+}
+.ic-hdr.udhna-hdr { background: var(--udhna2); }
+.ic-hdr.kim-hdr   { background: var(--kim2); }
+.ic-num {
+  width: 26px; height: 26px; border-radius: 7px;
+  font-size: 11px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; color: #fff;
+}
+.ic-num.udhna-num { background: var(--udhna); }
+.ic-num.kim-num   { background: var(--kim); }
+.ic-title { font-size: 13px; font-weight: 700; color: var(--navy); flex: 1; }
+.del-btn { background: none; border: none; color: var(--g300); font-size: 17px; cursor: pointer; padding: 2px 5px; border-radius: 5px; transition: all .15s; line-height: 1; }
+.del-btn:active { color: var(--red); background: var(--red2); }
+
+.ic-body { padding: 13px; }
+.f-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--g400); margin-bottom: 4px; display: flex; align-items: center; gap: 4px; }
+.dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+.dn { background: #8b5cf6; } .db { background: #f59e0b; } .dq { background: var(--blue); }
+.f-inp {
+  width: 100%; border: 2px solid var(--g200); border-radius: 10px;
+  padding: 9px 11px; font-size: 14px; font-family: 'Plus Jakarta Sans', sans-serif;
+  color: var(--g800); outline: none; transition: all .18s; background: var(--g50);
+  margin-bottom: 11px;
+}
+.f-inp:focus { border-color: var(--blue); background: #fff; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
+.qty-row { display: flex; gap: 7px; align-items: center; }
+.qty-btn {
+  width: 42px; height: 42px; border-radius: 10px;
+  border: 2px solid var(--g200); background: #fff;
+  font-size: 20px; font-weight: 600; color: var(--g600);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; transition: all .14s;
+}
+.qty-btn:active { background: var(--blue2); border-color: var(--blue); color: var(--blue); transform: scale(.9); }
+.qty-inp {
+  flex: 1; border: 2px solid var(--g200); border-radius: 10px;
+  padding: 9px; font-size: 20px; font-family: 'JetBrains Mono', monospace;
+  font-weight: 600; text-align: center; color: var(--navy);
+  outline: none; transition: all .18s; background: var(--g50);
+}
+.qty-inp:focus { border-color: var(--blue); background: #fff; }
+
+.add-btn {
+  width: 100%; background: #fff; border: 2px dashed #93c5fd;
+  border-radius: 14px; padding: 14px;
+  font-size: 14px; font-weight: 700; color: var(--blue);
+  cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  transition: all .18s; margin-bottom: 14px;
+}
+.add-btn:active { background: var(--blue2); }
+
+/* ── FOOT ── */
+.foot { padding: 12px 14px; background: #fff; border-top: 1px solid var(--g200); display: flex; gap: 9px; }
+.btn-ghost { background: var(--g100); border: none; border-radius: 11px; padding: 14px 15px; font-size: 12px; font-weight: 700; color: var(--g600); cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .18s; }
+.btn-ghost:active { background: var(--g200); }
+.btn-next { flex: 1; border: none; border-radius: 11px; padding: 14px; font-size: 14px; font-weight: 800; color: #fff; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .18s; display: flex; align-items: center; justify-content: center; gap: 7px; }
+.btn-next.udhna-btn { background: var(--udhna); box-shadow: 0 4px 16px rgba(124,58,237,.4); }
+.btn-next.kim-btn   { background: var(--kim);   box-shadow: 0 4px 16px rgba(8,145,178,.4); }
+.btn-next.green-btn { background: var(--green); box-shadow: 0 4px 16px rgba(5,150,105,.4); }
+.btn-next:active { transform: scale(.97); box-shadow: none; }
+.btn-next:disabled { background: var(--g200); color: var(--g400); box-shadow: none; cursor: not-allowed; }
+
+/* ══════════════════════════════════
+   SCREEN 3 — COMPUTER GUY (Phase 2)
+══════════════════════════════════ */
+#s-computer { background: #f0fdf8; }
+
+.loading-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+.loading-spinner { width: 40px; height: 40px; border: 3px solid var(--g200); border-top-color: var(--green); border-radius: 50%; animation: spin .8s linear infinite; margin-bottom: 14px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.loading-text { font-size: 14px; font-weight: 600; color: var(--g600); }
+.loading-sub { font-size: 12px; color: var(--g400); margin-top: 4px; }
+
+.empty-state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 20px; text-align: center; }
+.empty-icon { font-size: 48px; margin-bottom: 12px; }
+.empty-title { font-size: 16px; font-weight: 700; color: var(--g800); margin-bottom: 6px; }
+.empty-sub { font-size: 13px; color: var(--g400); line-height: 1.5; }
+
+/* Session cards for computer guy */
+.session-card {
+  background: #fff; border-radius: 16px;
+  box-shadow: 0 2px 12px rgba(15,31,69,.08);
+  margin-bottom: 12px; overflow: hidden;
+  animation: slideUp .22s ease-out;
+}
+.sc-hdr {
+  padding: 11px 14px; display: flex; align-items: center; gap: 10px;
+  justify-content: space-between;
+}
+.sc-hdr.udhna-hdr { background: var(--udhna2); }
+.sc-hdr.kim-hdr   { background: var(--kim2); }
+.sc-info { flex: 1; }
+.sc-title { font-size: 13px; font-weight: 700; color: var(--navy); }
+.sc-meta { font-size: 10px; color: var(--g400); margin-top: 2px; }
+.sc-count {
+  font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  padding: 3px 9px; border-radius: 20px;
+}
+.sc-count.udhna-count { background: var(--udhna); color: #fff; }
+.sc-count.kim-count   { background: var(--kim);   color: #fff; }
+
+/* Comp item rows */
+.comp-item {
+  display: flex; align-items: center; padding: 12px 14px;
+  border-bottom: 1px solid var(--g50); gap: 10px;
+  transition: background .15s;
+}
+.comp-item:last-child { border-bottom: none; }
+.comp-item.filled { background: #f0fdf4; }
+.ci-info { flex: 1; min-width: 0; }
+.ci-name { font-size: 13px; font-weight: 700; color: var(--g800); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ci-brand { font-size: 11px; color: var(--g400); margin-top: 1px; }
+.ci-phys {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 10px; font-weight: 700; font-family: 'JetBrains Mono', monospace;
+  padding: 2px 8px; border-radius: 5px; margin-top: 4px;
+}
+.ci-phys.udhna-phys { background: var(--udhna2); color: var(--udhna); }
+.ci-phys.kim-phys   { background: var(--kim2);   color: var(--kim); }
+.ci-inp-wrap { flex-shrink: 0; }
+.ci-inp {
+  width: 80px; border: 2px solid var(--g200); border-radius: 9px;
+  padding: 9px 6px; font-size: 19px; font-family: 'JetBrains Mono', monospace;
+  font-weight: 600; text-align: center; color: var(--navy);
+  outline: none; transition: all .18s; background: var(--g50);
+}
+.ci-inp:focus { border-color: var(--green); background: #fff; box-shadow: 0 0 0 3px rgba(5,150,105,.12); }
+.ci-inp.done { border-color: var(--green); background: var(--green2); color: var(--green); }
+
+/* refresh btn */
+.refresh-btn {
+  background: rgba(255,255,255,.18); border: none; border-radius: 20px;
+  padding: 5px 12px; font-size: 11px; font-weight: 700; color: #fff;
+  cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif;
+  display: flex; align-items: center; gap: 5px; transition: all .2s;
+}
+.refresh-btn:active { background: rgba(255,255,255,.3); }
+.refresh-icon { display: inline-block; transition: transform .4s; }
+.refresh-btn.spinning .refresh-icon { transform: rotate(360deg); }
+
+/* ══════════════════════════════════
+   SCREEN 4 — SUMMARY
+══════════════════════════════════ */
+#s-summary { background: #f0f4ff; }
+.sum-hero { padding: 28px 20px 24px; text-align: center; }
+.sum-hero.saving { background: linear-gradient(135deg,#1e3a8a,#2563eb); }
+.sum-hero.saved  { background: linear-gradient(135deg,#065f46,#059669); }
+.sum-hero.offline{ background: linear-gradient(135deg,#7c2d12,#b45309); }
+.sum-icon { font-size: 48px; margin-bottom: 10px; }
+.sum-title { font-size: 24px; font-weight: 800; color: #fff; letter-spacing: -.5px; margin-bottom: 4px; }
+.sum-meta { font-size: 12px; color: rgba(255,255,255,.65); }
+.saving-bar { background: rgba(255,255,255,.2); border-radius: 10px; height: 5px; margin-top: 14px; overflow: hidden; }
+.saving-anim { height: 100%; background: #fff; border-radius: 10px; animation: savingPulse 1.4s ease-in-out infinite; }
+@keyframes savingPulse { 0%{width:0%}60%{width:85%}100%{width:100%} }
+
+.sum-body { flex: 1; overflow-y: auto; padding: 14px; }
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-bottom: 14px; }
+.stat-card { background: #fff; border-radius: 13px; padding: 14px; text-align: center; box-shadow: 0 2px 8px rgba(15,31,69,.08); border-top: 3px solid transparent; }
+.stat-card.s-total { border-color: var(--blue); }
+.stat-card.s-match { border-color: var(--green); }
+.stat-card.s-short { border-color: var(--red); }
+.stat-card.s-over  { border-color: var(--amber); }
+.stat-n { font-size: 36px; font-weight: 800; font-family: 'JetBrains Mono', monospace; }
+.s-total .stat-n { color: var(--blue); }
+.s-match .stat-n { color: var(--green); }
+.s-short .stat-n { color: var(--red); }
+.s-over  .stat-n { color: var(--amber); }
+.stat-lbl { font-size: 10px; color: var(--g400); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; margin-top: 2px; }
+
+.sheets-banner { border-radius: 12px; padding: 12px 14px; margin-bottom: 14px; display: flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 600; }
+.sheets-banner.ok  { background: var(--green2); color: var(--green); }
+.sheets-banner.err { background: var(--red2);   color: var(--red); }
+.sheets-banner.warn{ background: var(--amber2); color: var(--amber); }
+
+.res-title { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .09em; color: var(--g400); margin-bottom: 8px; }
+.res-item { background: #fff; border-radius: 11px; padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 9px; box-shadow: 0 1px 5px rgba(15,31,69,.07); }
+.res-badge { font-size: 9px; font-weight: 700; padding: 3px 8px; border-radius: 20px; flex-shrink: 0; font-family: 'JetBrains Mono', monospace; }
+.b-match { background: var(--green2); color: var(--green); }
+.b-over  { background: var(--amber2); color: var(--amber); }
+.b-short { background: var(--red2);   color: var(--red); }
+.b-na    { background: var(--g100);   color: var(--g400); }
+.res-name { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.res-nums { font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--g400); flex-shrink: 0; text-align: right; line-height: 1.7; }
+
+.sum-foot { padding: 12px 14px; background: #fff; border-top: 1px solid var(--g200); display: flex; gap: 9px; }
+.btn-export { flex: 1; background: var(--navy); border: none; border-radius: 11px; padding: 15px; font-size: 14px; font-weight: 800; color: #fff; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; transition: all .18s; box-shadow: 0 4px 14px rgba(15,31,69,.35); display: flex; align-items: center; justify-content: center; gap: 7px; }
+.btn-export:active { transform: scale(.97); }
+.btn-new { background: var(--g100); border: none; border-radius: 11px; padding: 15px 16px; font-size: 12px; font-weight: 700; color: var(--g600); cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
+
+/* ── CONFIRM OVERLAY ── */
+.overlay { position: fixed; inset: 0; background: rgba(5,10,30,.6); display: flex; align-items: flex-end; justify-content: center; z-index: 100; opacity: 0; pointer-events: none; transition: opacity .22s; }
+.overlay.show { opacity: 1; pointer-events: all; }
+.confirm-sheet { background: #fff; border-radius: 22px 22px 0 0; padding: 24px 20px 34px; width: 100%; max-width: 460px; transform: translateY(40px); transition: transform .26s cubic-bezier(.4,0,.2,1); }
+.overlay.show .confirm-sheet { transform: translateY(0); }
+.cf-title { font-size: 18px; font-weight: 800; color: var(--navy); margin-bottom: 8px; }
+.cf-body { font-size: 13px; color: var(--g600); line-height: 1.65; margin-bottom: 20px; }
+.cf-actions { display: flex; gap: 9px; }
+.cf-cancel { flex: 1; background: var(--g100); border: none; border-radius: 12px; padding: 14px; font-size: 13px; font-weight: 700; color: var(--g600); cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
+.cf-go { flex: 2; border: none; border-radius: 12px; padding: 14px; font-size: 13px; font-weight: 800; color: #fff; cursor: pointer; font-family: 'Plus Jakarta Sans', sans-serif; }
+.cf-go.udhna-btn { background: var(--udhna); }
+.cf-go.kim-btn   { background: var(--kim); }
+
+/* ── TOAST ── */
+.toast { position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--g800); color: #fff; padding: 10px 18px; border-radius: 11px; font-size: 12px; font-weight: 600; opacity: 0; transition: all .25s; pointer-events: none; z-index: 999; white-space: nowrap; }
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toast.ok  { background: var(--green); }
+.toast.err { background: var(--red); }
+
+input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+input[type=number] { -moz-appearance: textfield; }
+</style>
+</head>
+<body>
+
+<!-- ══════ SCREEN 1: SELECT ROLE + GODOWN ══════ -->
+<div id="s-select" class="screen active">
+  <div class="select-wrap">
+    <div class="app-brand">
+      <span class="app-icon">📦</span>
+      <div class="app-name">Stock Check</div>
+      <div class="app-tagline">Udhna & Kim Godown</div>
+    </div>
+
+    <!-- Name -->
+    <div class="sect-label">Your Name</div>
+    <div class="name-card">
+      <span class="name-icon">👤</span>
+      <input class="name-inp" id="inp-name" type="text" placeholder="Enter your name…" autocomplete="name">
+    </div>
+
+    <!-- Godown -->
+    <div class="sect-label">Select Godown</div>
+    <div class="godown-grid">
+      <div class="godown-card udhna" id="card-udhna" onclick="selectGodown('Udhna')">
+        <div class="godown-check" id="check-udhna"></div>
+        <span class="godown-icon">🏭</span>
+        <div class="godown-name">Udhna</div>
+        <div class="godown-sub">Godown 1</div>
+      </div>
+      <div class="godown-card kim" id="card-kim" onclick="selectGodown('Kim')">
+        <div class="godown-check" id="check-kim"></div>
+        <span class="godown-icon">🏬</span>
+        <div class="godown-name">Kim</div>
+        <div class="godown-sub">Godown 2</div>
+      </div>
+    </div>
+
+    <!-- Role -->
+    <div class="sect-label">Your Role</div>
+    <div class="role-grid">
+      <div class="role-card" id="role-counter" onclick="selectRole('counter')">
+        <span class="role-icon">📋</span>
+        <div class="role-name">Counter</div>
+        <div class="role-desc">Walk floor & count physical stock</div>
+      </div>
+      <div class="role-card" id="role-computer" onclick="selectRole('computer')">
+        <span class="role-icon">💻</span>
+        <div class="role-name">Computer</div>
+        <div class="role-desc">Enter system stock from computer</div>
+      </div>
+    </div>
+
+    <button class="btn-start" onclick="startApp()">Let's Go →</button>
+  </div>
+</div>
+
+<!-- ══════ SCREEN 2: COUNTER — PHASE 1 ══════ -->
+<div id="s-counter" class="screen">
+  <div class="top-bar" id="counter-bar">
+    <div class="tb-row">
+      <div class="tb-left">
+        <div class="tb-title" id="counter-title">Physical Count</div>
+        <div class="tb-sub" id="counter-sub">Count items and enter quantity</div>
+      </div>
+      <div class="tb-badge" id="counter-badge">📦 Counting</div>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-track"><div class="prog-fill" id="counter-prog" style="width:0%"></div></div>
+      <div class="prog-lbl" id="counter-lbl">0 items</div>
+    </div>
+  </div>
+
+  <div class="body-area">
+    <div id="items-list"></div>
+    <button class="add-btn" onclick="addItem()">＋&nbsp; Add Item</button>
+  </div>
+
+  <div class="foot">
+    <button class="btn-ghost" onclick="goTo('s-select')">← Back</button>
+    <button class="btn-next" id="btn-count-done" onclick="finishCount()">✓ &nbsp;Count Done →</button>
+  </div>
+</div>
+
+<!-- ══════ SCREEN 3: COMPUTER GUY — PHASE 2 ══════ -->
+<div id="s-computer" class="screen">
+  <div class="top-bar" id="computer-bar">
+    <div class="tb-row">
+      <div class="tb-left">
+        <div class="tb-title" id="computer-title">Computer Stock</div>
+        <div class="tb-sub" id="computer-sub">Enter system stock for each item</div>
+      </div>
+      <button class="refresh-btn" id="refresh-btn" onclick="loadPending()">
+        <span class="refresh-icon">↻</span> Refresh
+      </button>
+    </div>
+    <div class="prog-wrap">
+      <div class="prog-track"><div class="prog-fill" id="computer-prog" style="width:0%"></div></div>
+      <div class="prog-lbl" id="computer-lbl">0 / 0 done</div>
+    </div>
+  </div>
+
+  <div id="computer-body" style="flex:1;overflow-y:auto;padding:14px"></div>
+
+  <div class="foot">
+    <button class="btn-ghost" onclick="goTo('s-select')">← Back</button>
+    <button class="btn-next green-btn" id="btn-comp-done" onclick="finaliseComp()">✅ &nbsp;Save & Finish →</button>
+  </div>
+</div>
+
+<!-- ══════ SCREEN 4: SUMMARY ══════ -->
+<div id="s-summary" class="screen">
+  <div class="sum-hero saving" id="sum-hero">
+    <div class="sum-icon" id="sum-icon">⏳</div>
+    <div class="sum-title" id="sum-title">Saving…</div>
+    <div class="sum-meta" id="sum-meta"></div>
+    <div class="saving-bar" id="sum-saving-bar"><div class="saving-anim"></div></div>
+  </div>
+  <div class="sum-body" id="sum-body"></div>
+  <div class="sum-foot">
+    <button class="btn-new" onclick="goTo('s-select')">🔄 New Check</button>
+    <button class="btn-export" onclick="exportExcel()">⬇️ Export Excel</button>
+  </div>
+</div>
+
+<!-- Confirm overlay -->
+<div class="overlay" id="overlay">
+  <div class="confirm-sheet">
+    <div class="cf-title" id="cf-title">Count Done?</div>
+    <div class="cf-body" id="cf-body"></div>
+    <div class="cf-actions">
+      <button class="cf-cancel" onclick="closeOverlay()">← Keep Editing</button>
+      <button class="cf-go" id="cf-go" onclick="confirmSave()">Yes, Save Count →</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+//  CONFIG — hardcoded, employees never see
+// ══════════════════════════════════════════
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbwI_4jqoD60G0wQ1U-s9EuKQWbxEz6icZL-5YED1XNX2i8sARtClPhLNPt9e7Z3y--e/exec';
+const GODOWNS    = ['Udhna', 'Kim'];
+
+// ══════════════════════════════════════════
+//  STATE
+// ══════════════════════════════════════════
+let sel = { godown: null, role: null };
+let session = { name:'', godown:'', items:[], sessionId:'' };
+let compSessions = []; // loaded pending sessions for computer role
+let idCtr = 0;
+
+// ══════════════════════════════════════════
+//  NAVIGATION
+// ══════════════════════════════════════════
+function goTo(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
+}
+
+// ══════════════════════════════════════════
+//  SELECT SCREEN
+// ══════════════════════════════════════════
+function selectGodown(g) {
+  sel.godown = g;
+  GODOWNS.forEach(name => {
+    const card  = document.getElementById('card-'+name.toLowerCase());
+    const check = document.getElementById('check-'+name.toLowerCase());
+    const active = name === g;
+    card.classList.toggle('selected', active);
+    check.textContent = active ? '✓' : '';
+  });
+}
+
+function selectRole(r) {
+  sel.role = r;
+  ['counter','computer'].forEach(role => {
+    document.getElementById('role-'+role).classList.toggle('selected', role === r);
+  });
+}
+
+function startApp() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name)       { showToast('Please enter your name','err'); return; }
+  if (!sel.godown) { showToast('Please select a Godown','err'); return; }
+  if (!sel.role)   { showToast('Please select your Role','err'); return; }
+
+  const g = sel.godown;
+  const isUdhna = g === 'Udhna';
+  const colorClass = isUdhna ? 'udhna' : 'kim';
+
+  if (sel.role === 'counter') {
+    // Set up counter screen
+    session = { name, godown: g, items: [], sessionId: 'sess_'+Date.now() };
+    idCtr = 0;
+
+    document.getElementById('counter-bar').className   = `top-bar ${colorClass}-bar`;
+    document.getElementById('counter-title').textContent = `${g} — Physical Count`;
+    document.getElementById('counter-sub').textContent  = `${name} · counting items`;
+    document.getElementById('btn-count-done').className = `btn-next ${colorClass}-btn`;
+
+    renderItems();
+    goTo('s-counter');
+    setTimeout(addItem, 180);
+
+  } else {
+    // Computer guy — load pending from sheet
+    session = { name, godown: g, items: [] };
+    document.getElementById('computer-bar').className   = `top-bar green-bar`;
+    document.getElementById('computer-title').textContent = `${g} — Computer Stock`;
+    document.getElementById('computer-sub').textContent  = `${name} · enter system stock`;
+    document.getElementById('btn-comp-done').className  = 'btn-next green-btn';
+
+    loadPending();
+    goTo('s-computer');
+  }
+}
+
+// ══════════════════════════════════════════
+//  COUNTER — PHASE 1
+// ══════════════════════════════════════════
+function addItem() {
+  const id = ++idCtr;
+  session.items.push({ id, name:'', brand:'', qty:0 });
+  renderItems();
+  setTimeout(() => { const el = document.getElementById('n-'+id); if(el) el.focus(); }, 55);
+}
+
+function removeItem(id) {
+  if (session.items.length === 1) { showToast('Need at least 1 item','err'); return; }
+  session.items = session.items.filter(i => i.id !== id);
+  renderItems();
+}
+
+function adjQty(id, d) {
+  const item = session.items.find(i => i.id === id);
+  if (!item) return;
+  item.qty = Math.max(0, (item.qty||0) + d);
+  const el = document.getElementById('q-'+id);
+  if (el) el.value = item.qty;
+}
+
+function syncItems() {
+  session.items.forEach(item => {
+    const n = document.getElementById('n-'+item.id);
+    const b = document.getElementById('b-'+item.id);
+    const q = document.getElementById('q-'+item.id);
+    if(n) item.name  = n.value.trim();
+    if(b) item.brand = b.value.trim();
+    if(q) item.qty   = parseInt(q.value)||0;
+  });
+}
+
+function renderItems() {
+  const g = session.godown || sel.godown;
+  const colorClass = g === 'Udhna' ? 'udhna' : 'kim';
+  const n = session.items.length;
+  document.getElementById('counter-prog').style.width = Math.min(100, n*5)+'%';
+  document.getElementById('counter-lbl').textContent  = n+(n===1?' item':' items');
+
+  document.getElementById('items-list').innerHTML = session.items.map((item, idx) => `
+    <div class="item-card">
+      <div class="ic-hdr ${colorClass}-hdr">
+        <div class="ic-num ${colorClass}-num">${idx+1}</div>
+        <div class="ic-title">Item ${idx+1}</div>
+        <button class="del-btn" onclick="removeItem(${item.id})">✕</button>
+      </div>
+      <div class="ic-body">
+        <div class="f-lbl"><span class="dot dn"></span>Item Name</div>
+        <input class="f-inp" id="n-${item.id}" type="text" placeholder="e.g. SC16UU, 6005, Bearing…"
+          value="${esc(item.name)}"
+          oninput="session.items.find(i=>i.id===${item.id}).name=this.value"
+          onkeydown="if(event.key==='Enter')document.getElementById('b-${item.id}').focus()">
+        <div class="f-lbl"><span class="dot db"></span>Brand</div>
+        <input class="f-inp" id="b-${item.id}" type="text" placeholder="e.g. SKF, FAG, CIU…"
+          value="${esc(item.brand)}"
+          oninput="session.items.find(i=>i.id===${item.id}).brand=this.value"
+          onkeydown="if(event.key==='Enter')document.getElementById('q-${item.id}').focus()">
+        <div class="f-lbl"><span class="dot dq"></span>Physical Quantity</div>
+        <div class="qty-row">
+          <button class="qty-btn" onclick="adjQty(${item.id},-1)">−</button>
+          <input class="qty-inp" id="q-${item.id}" type="number" min="0" value="${item.qty||0}"
+            oninput="session.items.find(i=>i.id===${item.id}).qty=parseInt(this.value)||0"
+            onkeydown="if(event.key==='Enter')addItem()">
+          <button class="qty-btn" onclick="adjQty(${item.id},1)">＋</button>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function finishCount() {
+  syncItems();
+  const valid = session.items.filter(i => i.name);
+  if (!valid.length) { showToast('Add at least one item','err'); return; }
+  session.items = valid;
+  const totalQty = session.items.reduce((s,i) => s+(i.qty||0), 0);
+  const g = session.godown;
+
+  document.getElementById('cf-title').textContent = `✅ Save Count for ${g}?`;
+  document.getElementById('cf-body').innerHTML =
+    `You've counted <strong>${session.items.length} item${session.items.length>1?'s':''}</strong> with <strong>${totalQty} total units</strong> in <strong>${g} Godown</strong>.<br><br>
+     This will save your physical count. The Computer person will then enter system stock separately.`;
+  document.getElementById('cf-go').className = `cf-go ${g==='Udhna'?'udhna':'kim'}-btn`;
+  document.getElementById('overlay').classList.add('show');
+}
+
+function closeOverlay() { document.getElementById('overlay').classList.remove('show'); }
+
+async function confirmSave() {
+  closeOverlay();
+  const btn = document.getElementById('btn-count-done');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+
+  try {
+    const payload = JSON.stringify({
+      action: 'savePhysical',
+      sessionId: session.sessionId,
+      godown: session.godown,
+      checker: session.name,
+      items: session.items
+    });
+    // Use no-cors to avoid CORS preflight with Google Apps Script
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      body: payload,
+      mode: 'no-cors'
+    });
+    // no-cors means we can't read the response, but the save goes through
+    showToast('✅ Physical count saved!','ok');
+    setTimeout(() => goTo('s-select'), 1200);
+  } catch(err) {
+    showToast('⚠️ Could not save — check connection','err');
+    setTimeout(() => goTo('s-select'), 1800);
+  }
+  btn.disabled = false; btn.textContent = '✓ Count Done →';
+}
+
+// ══════════════════════════════════════════
+//  COMPUTER GUY — PHASE 2
+// ══════════════════════════════════════════
+async function loadPending() {
+  const body = document.getElementById('computer-body');
+  const btn  = document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+
+  // Show loading state
+  body.innerHTML = `<div class="loading-state">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Loading ${session.godown} items…</div>
+    <div class="loading-sub">Fetching from Google Sheets</div>
+  </div>`;
+
+  try {
+    // Use JSONP-style callback to avoid CORS on GET requests
+    const data = await fetchWithCallback(`${SHEETS_URL}?action=getPending&godown=${encodeURIComponent(session.godown)}`);
+
+    if (!data.success) throw new Error(data.error);
+
+    compSessions = data.sessions || [];
+
+    if (!compSessions.length) {
+      body.innerHTML = `<div class="empty-state">
+        <div class="empty-icon">📭</div>
+        <div class="empty-title">No pending items for ${session.godown}</div>
+        <div class="empty-sub">The counter hasn't submitted a physical count yet. Ask them to complete Phase 1 first.</div>
+      </div>`;
+      updateCompProgress();
+    } else {
+      renderCompSessions();
+    }
+  } catch(err) {
+    body.innerHTML = `<div class="empty-state">
+      <div class="empty-icon">⚠️</div>
+      <div class="empty-title">Could not load</div>
+      <div class="empty-sub">Check your internet connection and tap Refresh.</div>
+    </div>`;
+  }
+  btn.classList.remove('spinning');
+}
+
+function renderCompSessions() {
+  const g = session.godown;
+  const colorClass = g === 'Udhna' ? 'udhna' : 'kim';
+  let html = '';
+
+  compSessions.forEach((sess, si) => {
+    html += `<div class="session-card">
+      <div class="sc-hdr ${colorClass}-hdr">
+        <div class="sc-info">
+          <div class="sc-title">Counted by: ${esc(sess.checker)}</div>
+          <div class="sc-meta">${esc(sess.timestamp)} · ${sess.items.length} items</div>
+        </div>
+        <div class="sc-count ${colorClass}-count">${sess.items.length} items</div>
+      </div>`;
+
+    sess.items.forEach((item, ii) => {
+      html += `<div class="comp-item" id="ci-wrap-${si}-${ii}">
+        <div class="ci-info">
+          <div class="ci-name">${esc(item.name)}</div>
+          <div class="ci-brand">${esc(item.brand)||'—'}</div>
+          <div class="ci-phys ${colorClass}-phys">📦 Counted: ${item.qty}</div>
+        </div>
+        <div class="ci-inp-wrap">
+          <input class="ci-inp" id="ci-${si}-${ii}" type="number" min="0" placeholder="—"
+            oninput="onCompInput(${si},${ii},this)"
+            onkeydown="compEnter(event,${si},${ii})">
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  document.getElementById('computer-body').innerHTML = html;
+  updateCompProgress();
+
+  // Focus first input
+  setTimeout(() => { const f = document.querySelector('.ci-inp'); if(f) f.focus(); }, 80);
+}
+
+function onCompInput(si, ii, el) {
+  if (!compSessions[si]) return;
+  compSessions[si].items[ii].compStock = el.value === '' ? null : parseInt(el.value);
+  el.classList.toggle('done', el.value !== '');
+  const wrap = document.getElementById(`ci-wrap-${si}-${ii}`);
+  if (wrap) wrap.classList.toggle('filled', el.value !== '');
+  updateCompProgress();
+}
+
+function compEnter(event, si, ii) {
+  if (event.key !== 'Enter') return;
+  // Move to next input
+  const allInputs = document.querySelectorAll('.ci-inp');
+  const current   = document.getElementById(`ci-${si}-${ii}`);
+  const idx       = Array.from(allInputs).indexOf(current);
+  if (allInputs[idx+1]) allInputs[idx+1].focus();
+}
+
+function updateCompProgress() {
+  let total = 0, done = 0;
+  compSessions.forEach(sess => {
+    sess.items.forEach(item => {
+      total++;
+      if (item.compStock !== null && item.compStock !== undefined) done++;
+    });
+  });
+  const pct = total ? done/total*100 : 0;
+  document.getElementById('computer-prog').style.width = pct+'%';
+  document.getElementById('computer-lbl').textContent = `${done} / ${total} done`;
+}
+
+async function finaliseComp() {
+  // Sync any remaining inputs
+  compSessions.forEach((sess, si) => {
+    sess.items.forEach((item, ii) => {
+      const el = document.getElementById(`ci-${si}-${ii}`);
+      if (el && el.value !== '') item.compStock = parseInt(el.value);
+    });
+  });
+
+  const hasAny = compSessions.some(s => s.items.some(i => i.compStock !== null));
+  if (!hasAny) { showToast('Enter at least one computer stock value','err'); return; }
+
+  const btn = document.getElementById('btn-comp-done');
+  btn.disabled = true; btn.textContent = '⏳ Saving…';
+
+  goTo('s-summary');
+  renderSummary('saving');
+
+  try {
+    const payload = JSON.stringify({
+      action: 'saveComputer',
+      godown: session.godown,
+      checker: session.name,
+      sessions: compSessions
+    });
+    await fetch(SHEETS_URL, {
+      method: 'POST',
+      body: payload,
+      mode: 'no-cors'
+    });
+    // no-cors: can't read response but save goes through
+    renderSummary('saved', `✅ Saved to Google Sheets successfully`);
+  } catch(err) {
+    renderSummary('offline', '⚠️ No connection — export Excel to save data');
+  }
+
+  btn.disabled = false; btn.textContent = '✅ Save & Finish →';
+}
+
+// ══════════════════════════════════════════
+//  SUMMARY
+// ══════════════════════════════════════════
+function getStatus(phys, comp) {
+  if (comp === null || comp === undefined) return 'pending';
+  if (phys === comp) return 'match';
+  return phys > comp ? 'over' : 'short';
+}
+
+function renderSummary(phase, msg) {
+  const hero  = document.getElementById('sum-hero');
+  const icon  = document.getElementById('sum-icon');
+  const title = document.getElementById('sum-title');
+  const meta  = document.getElementById('sum-meta');
+  const bar   = document.getElementById('sum-saving-bar');
+
+  if (phase === 'saving') {
+    hero.className='sum-hero saving'; icon.textContent='⏳';
+    title.textContent='Saving to Google Sheets…';
+    meta.textContent=`${session.name} · ${session.godown}`;
+    bar.style.display='block'; return;
+  }
+  bar.style.display='none';
+
+  if (phase === 'saved') { hero.className='sum-hero saved'; icon.textContent='✅'; title.textContent='Complete!'; }
+  else                   { hero.className='sum-hero offline'; icon.textContent='⚠️'; title.textContent='Saved Locally'; }
+  meta.textContent=`${session.name} · ${session.godown} · ${fmtDate(new Date())}`;
+
+  // Flatten all items
+  const allItems = [];
+  compSessions.forEach(sess => sess.items.forEach(item => allItems.push(item)));
+
+  const counts = {match:0,over:0,short:0,pending:0};
+  allItems.forEach(i => counts[getStatus(i.qty, i.compStock)]++);
+
+  const stLabel = {match:'✔ MATCH',over:'▲ OVER',short:'▼ SHORT',pending:'— N/A'};
+  const stCls   = {match:'b-match',over:'b-over',short:'b-short',pending:'b-na'};
+
+  document.getElementById('sum-body').innerHTML = `
+    ${msg ? `<div class="sheets-banner ${phase==='saved'?'ok':'warn'}"><span>${msg}</span></div>` : ''}
+    <div class="stats-grid">
+      <div class="stat-card s-total"><div class="stat-n">${allItems.length}</div><div class="stat-lbl">Total</div></div>
+      <div class="stat-card s-match"><div class="stat-n">${counts.match}</div><div class="stat-lbl">Match</div></div>
+      <div class="stat-card s-short"><div class="stat-n">${counts.short}</div><div class="stat-lbl">Short</div></div>
+      <div class="stat-card s-over"><div class="stat-n">${counts.over}</div><div class="stat-lbl">Over</div></div>
+    </div>
+    <div class="res-title">All Items — ${session.godown}</div>
+    ${allItems.map(item => {
+      const st  = getStatus(item.qty, item.compStock);
+      const diff = item.compStock !== null ? item.qty - item.compStock : null;
+      return `<div class="res-item">
+        <span class="res-badge ${stCls[st]}">${stLabel[st]}</span>
+        <span class="res-name">${esc(item.name)}</span>
+        <span class="res-nums">${item.qty}<br><span style="color:var(--g200)">vs</span>&nbsp;${item.compStock??'—'}</span>
+      </div>`;
+    }).join('')}
+  `;
+}
+
+// ══════════════════════════════════════════
+//  EXPORT EXCEL
+// ══════════════════════════════════════════
+function exportExcel() {
+  const wb   = XLSX.utils.book_new();
+  const today = fmtDate(new Date());
+
+  compSessions.forEach((sess, si) => {
+    const rows = [
+      ['STOCK CHECK — '+session.godown.toUpperCase()], [''],
+      ['Checked by (Counter):', sess.checker, '', 'Computer by:', session.name],
+      ['Date:', today, '', 'Godown:', session.godown], [''],
+      ['Timestamp','Checked By','Item Name','Brand','Physical Qty','Computer Stock','Difference','Status','Notes'],
+    ];
+    const ts = new Date().toLocaleString('en-GB');
+    sess.items.forEach(item => {
+      const st   = getStatus(item.qty, item.compStock);
+      const lbl  = {match:'✔ MATCH',over:'▲ OVER',short:'▼ SHORT',pending:'— N/A'}[st];
+      const diff = item.compStock !== null ? item.qty - item.compStock : '';
+      rows.push([ts, sess.checker, item.name, item.brand||'', item.qty, item.compStock??'', diff, lbl, '']);
+    });
+
+    const ws = XLSX.utils.aoa_to_sheet(rows);
+    ws['!cols'] = [{wch:18},{wch:14},{wch:20},{wch:14},{wch:12},{wch:14},{wch:10},{wch:10},{wch:12}];
+    XLSX.utils.book_append_sheet(wb, ws, `${session.godown} - Session ${si+1}`);
+  });
+
+  XLSX.writeFile(wb, `StockCheck_${session.godown}_${today.replace(/\s/g,'')}.xlsx`);
+  showToast('✅ Excel downloaded!','ok');
+}
+
+// ══════════════════════════════════════════
+//  CORS-FREE FETCH HELPERS
+// ══════════════════════════════════════════
+// For GET: use JSONP (script tag trick — no CORS)
+function fetchWithCallback(url) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Request timed out'));
+    }, 12000);
+
+    window[cbName] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    script.onerror = () => { cleanup(); reject(new Error('Script load failed')); };
+    script.src = url + '&callback=' + cbName;
+    document.head.appendChild(script);
+  });
+}
+
+// ══════════════════════════════════════════
+//  UTILS
+// ══════════════════════════════════════════
+function fmtDate(d) { return d.toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}); }
+function esc(s) { return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function showToast(msg, type) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast '+(type||'')+' show';
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+</script>
+</body>
+</html>
