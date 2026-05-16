@@ -840,24 +840,22 @@ async function confirmSave() {
   btn.disabled = true; btn.textContent = '⏳ Saving…';
 
   try {
-    const payload = JSON.stringify({
+    const payload = {
       action: 'savePhysical',
       sessionId: session.sessionId,
       godown: session.godown,
       checker: session.name,
       items: session.items
-    });
-    // Use no-cors to avoid CORS preflight with Google Apps Script
-    await fetch(SHEETS_URL, {
-      method: 'POST',
-      body: payload,
-      mode: 'no-cors'
-    });
-    // no-cors means we can't read the response, but the save goes through
-    showToast('✅ Physical count saved!','ok');
+    };
+    const data = await sendToSheets(payload);
+    if (data && data.success) {
+      showToast('✅ Physical count saved!','ok');
+    } else {
+      showToast('⚠️ Saved — check sheet to confirm','ok');
+    }
     setTimeout(() => goTo('s-select'), 1200);
   } catch(err) {
-    showToast('⚠️ Could not save — check connection','err');
+    showToast('⚠️ Could not reach sheet — try again','err');
     setTimeout(() => goTo('s-select'), 1800);
   }
   btn.disabled = false; btn.textContent = '✓ Count Done →';
@@ -998,19 +996,18 @@ async function finaliseComp() {
   renderSummary('saving');
 
   try {
-    const payload = JSON.stringify({
+    const payload = {
       action: 'saveComputer',
       godown: session.godown,
       checker: session.name,
       sessions: compSessions
-    });
-    await fetch(SHEETS_URL, {
-      method: 'POST',
-      body: payload,
-      mode: 'no-cors'
-    });
-    // no-cors: can't read response but save goes through
-    renderSummary('saved', `✅ Saved to Google Sheets successfully`);
+    };
+    const data = await sendToSheets(payload);
+    if (data && data.success) {
+      renderSummary('saved', '✅ Saved ' + (data.saved||'') + ' rows to Google Sheets');
+    } else {
+      renderSummary('saved', '✅ Data sent to Google Sheets');
+    }
   } catch(err) {
     renderSummary('offline', '⚠️ No connection — export Excel to save data');
   }
@@ -1109,9 +1106,12 @@ function exportExcel() {
 }
 
 // ══════════════════════════════════════════
-//  CORS-FREE FETCH HELPERS
+//  CORS-FREE HELPERS
+//  Both GET and POST use JSONP (script tag)
+//  — zero CORS issues, works from any domain
 // ══════════════════════════════════════════
-// For GET: use JSONP (script tag trick — no CORS)
+
+// GET via JSONP — used for loadPending
 function fetchWithCallback(url) {
   return new Promise((resolve, reject) => {
     const cbName = 'cb_' + Date.now();
@@ -1119,21 +1119,39 @@ function fetchWithCallback(url) {
     const timeout = setTimeout(() => {
       cleanup();
       reject(new Error('Request timed out'));
-    }, 12000);
-
-    window[cbName] = (data) => {
-      cleanup();
-      resolve(data);
-    };
-
+    }, 15000);
+    window[cbName] = (data) => { cleanup(); resolve(data); };
     function cleanup() {
       clearTimeout(timeout);
       delete window[cbName];
       if (script.parentNode) script.parentNode.removeChild(script);
     }
-
-    script.onerror = () => { cleanup(); reject(new Error('Script load failed')); };
+    script.onerror = () => { cleanup(); reject(new Error('Failed to load')); };
     script.src = url + '&callback=' + cbName;
+    document.head.appendChild(script);
+  });
+}
+
+// POST via JSONP — encodes payload as a URL param, uses GET+JSONP
+// This avoids ALL CORS preflight issues completely
+function sendToSheets(payload) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'cb_' + Date.now();
+    const script = document.createElement('script');
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error('Request timed out'));
+    }, 20000);
+    window[cbName] = (data) => { cleanup(); resolve(data); };
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+    script.onerror = () => { cleanup(); reject(new Error('Script error')); };
+    // Encode the entire payload as a URL parameter
+    const encoded = encodeURIComponent(JSON.stringify(payload));
+    script.src = SHEETS_URL + '?data=' + encoded + '&callback=' + cbName;
     document.head.appendChild(script);
   });
 }
